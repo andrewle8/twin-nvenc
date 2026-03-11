@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "twin-nvenc"
+version = "0.1.0"
+description = "Dual NVENC batch video compressor"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+twin-nvenc = "twin_nvenc.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
