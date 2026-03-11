@@ -2,6 +2,8 @@
 
 Batch compress video files using NVIDIA NVENC hardware encoding. The killer feature: **dual NVENC support** -- the RTX 4090 has 2 NVENC chips, and twin-nvenc encodes 2 files in parallel to use both.
 
+![twin-nvenc TUI showing dual NVENC encoding](screenshot.png)
+
 ## Install
 
 ```bash
