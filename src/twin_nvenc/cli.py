@@ -81,6 +81,7 @@ def _find_ffprobe(ffmpeg_path: str) -> str:
     help="Path to ffmpeg binary",
 )
 @click.option("--dry-run", is_flag=True, help="Show what would be encoded")
+@click.option("--tui", is_flag=True, help="Launch interactive TUI dashboard")
 def main(
     input_dirs: tuple[str, ...],
     codec: str,
@@ -91,6 +92,7 @@ def main(
     output: str,
     ffmpeg_path: str | None,
     dry_run: bool,
+    tui: bool,
 ) -> None:
     """Batch compress video files using NVIDIA NVENC hardware encoding.
 
@@ -146,6 +148,12 @@ def main(
 
     if dry_run:
         print_dry_run(file_tuples)
+        return
+
+    if tui:
+        from twin_nvenc.tui import run_tui
+
+        run_tui(file_infos, config)
         return
 
     # Callbacks
