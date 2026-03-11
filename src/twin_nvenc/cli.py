@@ -198,10 +198,10 @@ def main(
     console.print(f"[bold]Files to encode: {len(file_infos)}[/]")
     console.print()
 
-    # Pre-scan durations with ffprobe
+    # Pre-scan durations (ffprobe -> ffmpeg fallback)
     ffprobe_path = _find_ffprobe(config.ffmpeg_path)
     for fi in file_infos:
-        probe_duration(fi, ffprobe_path)
+        probe_duration(fi, ffprobe_path, config.ffmpeg_path)
 
     # Build file tuples for encoder
     file_tuples = [

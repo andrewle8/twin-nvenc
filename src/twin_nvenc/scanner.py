@@ -55,8 +55,20 @@ def find_videos(
     return files
 
 
-def probe_duration(file_info: FileInfo, ffprobe_path: str = "ffprobe") -> None:
-    """Use ffprobe to get video duration. Mutates file_info.duration_secs in place."""
+def probe_duration(
+    file_info: FileInfo,
+    ffprobe_path: str = "ffprobe",
+    ffmpeg_path: str = "ffmpeg",
+) -> None:
+    """Get video duration via ffprobe, falling back to ffmpeg. Mutates file_info in place."""
+    # Try ffprobe first (structured JSON output)
+    if _probe_with_ffprobe(file_info, ffprobe_path):
+        return
+    # Fall back to parsing ffmpeg -i stderr (Duration: HH:MM:SS.xx)
+    _probe_with_ffmpeg(file_info, ffmpeg_path)
+
+
+def _probe_with_ffprobe(file_info: FileInfo, ffprobe_path: str) -> bool:
     try:
         result = subprocess.run(
             [
@@ -73,5 +85,31 @@ def probe_duration(file_info: FileInfo, ffprobe_path: str = "ffprobe") -> None:
         if result.returncode == 0:
             data = json.loads(result.stdout)
             file_info.duration_secs = float(data["format"]["duration"])
+            return True
     except (subprocess.TimeoutExpired, KeyError, ValueError, FileNotFoundError):
         pass
+    return False
+
+
+def _probe_with_ffmpeg(file_info: FileInfo, ffmpeg_path: str) -> bool:
+    """Parse duration from ffmpeg -i stderr: 'Duration: 00:05:23.45, ...'"""
+    import re
+
+    try:
+        result = subprocess.run(
+            [ffmpeg_path, "-i", str(file_info.input_path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        # ffmpeg -i always exits non-zero (no output file), parse stderr
+        match = re.search(r"Duration:\s*(\d+):(\d+):(\d+)\.(\d+)", result.stderr)
+        if match:
+            h, m, s, frac = match.groups()
+            file_info.duration_secs = (
+                int(h) * 3600 + int(m) * 60 + int(s) + int(frac) / 100
+            )
+            return True
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    return False
