@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import time
 from pathlib import Path
 
@@ -231,11 +232,13 @@ class TwinNvencApp(App):
         self,
         file_infos: list[FileInfo],
         config: EncoderConfig,
+        demo: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.file_infos = file_infos
         self.config = config
+        self.demo = demo
         self._results: list[EncodeResult] = []
         self._active_slots: dict[int, int] = {}  # idx -> slot_id
         self._start_time = 0.0
@@ -269,8 +272,10 @@ class TwinNvencApp(App):
         stats.total = len(self.file_infos)
         self._start_time = time.monotonic()
         self._start_timer()
-        # Launch encoding as an async task on the same event loop
-        asyncio.get_event_loop().create_task(self._run_encode())
+        if self.demo:
+            asyncio.get_event_loop().create_task(self._run_demo())
+        else:
+            asyncio.get_event_loop().create_task(self._run_encode())
 
     def _start_timer(self) -> None:
         """Update elapsed time every second."""
@@ -308,6 +313,54 @@ class TwinNvencApp(App):
         )
         elapsed = time.monotonic() - start
         app.post_message(BatchDone(results, elapsed))
+
+    async def _run_demo(self) -> None:
+        """Simulate encoding with fake progress for TUI preview."""
+        total = len(self.file_infos)
+        semaphore = asyncio.Semaphore(self.config.parallel)
+        counter = 0
+        lock = asyncio.Lock()
+
+        async def _sim_one(fi: FileInfo) -> None:
+            nonlocal counter
+            async with semaphore:
+                async with lock:
+                    counter += 1
+                    idx = counter
+                self.post_message(FileStarted(idx, total, fi.input_path))
+
+                # Simulate encoding over 3-6 seconds
+                duration = random.uniform(3.0, 6.0)
+                steps = 40
+                for step in range(1, steps + 1):
+                    await asyncio.sleep(duration / steps)
+                    pct = step / steps * 100
+                    speed = f"{random.uniform(1.5, 3.5):.1f}x"
+                    remaining = duration * (1 - step / steps)
+                    self.post_message(ProgressUpdate(idx, {
+                        "percent": round(pct, 1),
+                        "speed": speed,
+                        "eta_secs": round(remaining, 1),
+                    }))
+
+                # Fake result with realistic compression ratio
+                ratio = random.uniform(0.25, 0.70)
+                output_size = int(fi.size_bytes * ratio)
+                result = EncodeResult(
+                    input_path=fi.input_path,
+                    output_path=fi.output_path,
+                    input_size=fi.size_bytes,
+                    output_size=output_size,
+                    elapsed_secs=duration,
+                    success=True,
+                )
+                self.post_message(FileDone(idx, total, result))
+
+        start = time.monotonic()
+        tasks = [_sim_one(fi) for fi in self.file_infos]
+        await asyncio.gather(*tasks)
+        elapsed = time.monotonic() - start
+        self.post_message(BatchDone(self._results, elapsed))
 
     def on_file_started(self, message: FileStarted) -> None:
         # Find a free slot
@@ -381,7 +434,7 @@ class TwinNvencApp(App):
         queue_label.update("  Queue: done")
 
 
-def run_tui(file_infos: list[FileInfo], config: EncoderConfig) -> None:
+def run_tui(file_infos: list[FileInfo], config: EncoderConfig, demo: bool = False) -> None:
     """Launch the TUI app."""
-    app = TwinNvencApp(file_infos, config)
+    app = TwinNvencApp(file_infos, config, demo=demo)
     app.run()

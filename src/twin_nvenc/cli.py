@@ -86,6 +86,7 @@ def _find_ffprobe(ffmpeg_path: str) -> str:
 )
 @click.option("--dry-run", is_flag=True, help="Show what would be encoded")
 @click.option("--tui", is_flag=True, help="Launch interactive TUI dashboard")
+@click.option("--demo", is_flag=True, help="Launch TUI with simulated encoding (preview)")
 @click.option("--init-config", is_flag=True, help="Create default config.toml")
 @click.option("--list-profiles", is_flag=True, help="List available profiles")
 def main(
@@ -100,6 +101,7 @@ def main(
     profile: str | None,
     dry_run: bool,
     tui: bool,
+    demo: bool,
     init_config: bool,
     list_profiles: bool,
 ) -> None:
@@ -211,10 +213,10 @@ def main(
         print_dry_run(file_tuples)
         return
 
-    if tui:
+    if tui or demo:
         from twin_nvenc.tui import run_tui
 
-        run_tui(file_infos, config)
+        run_tui(file_infos, config, demo=demo)
         return
 
     # Callbacks
