@@ -7,7 +7,7 @@ Batch compress video files using NVIDIA NVENC hardware encoding. The killer feat
 ## Install
 
 ```bash
-git clone https://github.com/yourusername/twin-nvenc.git
+git clone https://github.com/andrewle8/twin-nvenc.git
 cd twin-nvenc
 pip install -e .
 ```
