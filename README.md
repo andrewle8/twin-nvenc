@@ -12,7 +12,7 @@ cd twin-nvenc
 pip install -e .
 ```
 
-Requires Python 3.11+ and ffmpeg with NVENC support.
+Requires Python 3.11+, an NVIDIA GPU with NVENC support, and ffmpeg built with NVENC. AV1 encoding requires RTX 40-series or newer.
 
 ## Usage
 
@@ -101,28 +101,18 @@ CLI flags always override profile values: `twin-nvenc -P archival -q 20 "F:/vide
 | 29-32 | Aggressive -- good for archival |
 | 33-38 | Maximum compression -- artifacts visible on close inspection |
 
-## Presets
-
-| Preset | Speed | Compression |
-|--------|-------|-------------|
-| p1 | Fastest | Largest files |
-| p4 | Balanced | Recommended default |
-| p7 | Slowest | Smallest files |
-
 ## How It Works
 
 - Scans input directories for video files (mp4, mkv, avi, mov, wmv, webm, flv)
-- Creates a `compressed/` subfolder in each input directory
-- Encodes using optimal NVENC flags: VBR rate control, multipass, lookahead, adaptive quantization
-- Runs N encodes in parallel using asyncio -- the next file starts the instant a chip frees up
-- Skips files that already exist in compressed/ -- safe to interrupt and resume
-- Deletes output if it's bigger than the original (fast-motion gaming footage barely compresses)
-- Prints per-file results with color-coded compression ratios
-- Final report with per-folder and grand total stats
+- Encodes into a `compressed/` subfolder with optimal NVENC flags (VBR, multipass, lookahead, adaptive quantization)
+- Runs N encodes in parallel -- the next file starts the instant a chip frees up
+- Safe to interrupt and resume: skips files that already exist in `compressed/`
+- Automatically deletes output if it's bigger than the original
+- Color-coded per-file results and a final report with total space saved
 
 ## Encoding Flags
 
-The tool uses researched-optimal NVENC settings:
+Under the hood, twin-nvenc uses tuned NVENC settings:
 
 ```
 -hwaccel cuda -hwaccel_output_format cuda    # GPU-resident decode, no PCIe round-trips
@@ -132,21 +122,6 @@ The tool uses researched-optimal NVENC settings:
 -spatial-aq 1 -temporal-aq 1                 # Adaptive quantization
 -bf 3 -b_adapt 1                             # B-frames with adaptive placement
 ```
-
-## TUI Dashboard
-
-`twin-nvenc --tui` launches an interactive terminal dashboard showing:
-- Real-time progress bars per NVENC chip
-- Current encoding speed and ETA
-- Completed file list with compression ratios
-- Running totals of saved space
-
-## Requirements
-
-- NVIDIA GPU with NVENC support (GTX 10-series or newer)
-- AV1 encoding requires RTX 40-series or newer
-- ffmpeg built with NVENC support
-- Python 3.11+
 
 ## NVENC Chip Count
 
